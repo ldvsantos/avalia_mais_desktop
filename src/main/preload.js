@@ -74,7 +74,9 @@ contextBridge.exposeInMainWorld('avaliaAPI', {
   reports: {
     submissionPDF: (protocol) => ipcRenderer.invoke('reports:submission-pdf', protocol),
     allocationPDF: (data) => ipcRenderer.invoke('reports:allocation-pdf', data),
+    appealPDF: (data) => ipcRenderer.invoke('reports:appeal-pdf', data),
     certificatePDF: (data) => ipcRenderer.invoke('reports:certificate-pdf', data),
+    integrityReportPDF: (submission, integrity) => ipcRenderer.invoke('reports:integrity-report-pdf', submission, integrity),
     exportResultsCSV: () => ipcRenderer.invoke('reports:export-results-csv')
   },
 

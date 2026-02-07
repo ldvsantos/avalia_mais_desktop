@@ -320,6 +320,32 @@ function registerIPCHandlers() {
     }
     return { success: false };
   });
+  ipcMain.handle('reports:appeal-pdf', async (_, data) => {
+    const pdfBuffer = await reportService.generateAppealPDF(data);
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Salvar Comprovante de Recurso',
+      defaultPath: `recurso_${data.protocol || 'comprovante'}.pdf`,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }]
+    });
+    if (!result.canceled) {
+      fs.writeFileSync(result.filePath, pdfBuffer);
+      return { success: true, path: result.filePath };
+    }
+    return { success: false };
+  });
+  ipcMain.handle('reports:integrity-report-pdf', async (_, submission, integrity) => {
+    const pdfBuffer = await reportService.generateIntegrityReportPDF(submission, integrity);
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Salvar Relatório de Integridade',
+      defaultPath: `integridade_${submission.protocol || 'relatorio'}.pdf`,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }]
+    });
+    if (!result.canceled) {
+      fs.writeFileSync(result.filePath, pdfBuffer);
+      return { success: true, path: result.filePath };
+    }
+    return { success: false };
+  });
   ipcMain.handle('reports:export-results-csv', async () => {
     const csv = await reportService.exportResultsCSV();
     const result = await dialog.showSaveDialog(mainWindow, {
