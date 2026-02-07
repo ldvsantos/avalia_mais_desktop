@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+*.db
+*.db-wal
+*.db-shm
+*.avaliabackup
+backups/
+.env

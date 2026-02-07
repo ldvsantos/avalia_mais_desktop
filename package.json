@@ -1,0 +1,66 @@
+{
+  "name": "avalia-mais-desktop",
+  "version": "1.0.0",
+  "description": "Avalia+ Desktop — Sistema de Gestão de Processos Seletivos",
+  "main": "src/main/main.js",
+  "author": "Avalia+Tec",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "cross-env NODE_ENV=development electron .",
+    "build": "electron-builder --win",
+    "build:portable": "electron-builder --win portable",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "build": {
+    "appId": "br.tec.avaliamais.desktop",
+    "productName": "Avalia+ Desktop",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Avalia+ Desktop"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "data",
+        "to": "data"
+      }
+    ]
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "electron-store": "^8.2.0",
+    "pdfkit": "^0.17.2",
+    "qrcode": "^1.5.4",
+    "bcryptjs": "^2.4.3",
+    "uuid": "^9.0.0",
+    "exceljs": "^4.4.0",
+    "sanitize-html": "^2.17.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
+    "cross-env": "^7.0.3"
+  }
+}
