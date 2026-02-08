@@ -29,7 +29,33 @@ const PublicFileService = require('../services/PublicFileService');
 const FaqService = require('../services/FaqService');
 
 let mainWindow = null;
+let splashWindow = null;
 let authService, submissionService, evaluationService, appealService, eventService, reportService, backupService, workflowService, syncService, calendarService, publicFileService, faqService;
+
+function createSplashWindow() {
+  splashWindow = new BrowserWindow({
+    width: 480,
+    height: 360,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: true,
+    center: true,
+    alwaysOnTop: true,
+    skipTaskbar: false,
+    icon: path.join(__dirname, '../../assets/icon.png'),
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  splashWindow.loadFile(path.join(__dirname, '../renderer/splash.html'));
+
+  splashWindow.on('closed', () => {
+    splashWindow = null;
+  });
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -54,7 +80,14 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
 
   mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
+    // Aguarda um pouco para a splash screen ficar visível
+    setTimeout(() => {
+      if (splashWindow) {
+        splashWindow.close();
+      }
+      mainWindow.show();
+      mainWindow.focus();
+    }, 3000); // 3 segundos de splash
   });
 
   mainWindow.on('closed', () => {
@@ -560,11 +593,15 @@ function registerIPCHandlers() {
 // App Lifecycle
 // ============================================================
 app.whenReady().then(() => {
+  // Exibe splash screen imediatamente
+  createSplashWindow();
+
+  // Inicializa tudo enquanto splash aparece
   db.initialize();
   initServices();
   buildMenu();
-  createWindow();
   registerIPCHandlers();
+  createWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:">
+  <title>Avalia+ Desktop</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.6; }
+    }
+
+    @keyframes progressBar {
+      0%   { width: 0%; }
+      15%  { width: 15%; }
+      30%  { width: 30%; }
+      50%  { width: 55%; }
+      70%  { width: 70%; }
+      85%  { width: 85%; }
+      100% { width: 100%; }
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    @keyframes logoGlow {
+      0%, 100% { filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.3)); }
+      50%      { filter: drop-shadow(0 0 20px rgba(37, 99, 235, 0.6)); }
+    }
+
+    @keyframes dotPulse {
+      0%, 80%, 100% { opacity: 0; transform: scale(0.6); }
+      40%          { opacity: 1; transform: scale(1); }
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(145deg, #0f172a 0%, #1e293b 40%, #0f172a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+
+    .splash-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      animation: fadeIn 0.8s ease-out;
+    }
+
+    /* Logo */
+    .splash-logo {
+      width: 90px;
+      height: 90px;
+      margin-bottom: 20px;
+      animation: logoGlow 2.5s ease-in-out infinite;
+    }
+
+    .splash-logo img {
+      width: 100%;
+      height: 100%;
+      border-radius: 18px;
+      box-shadow: 0 8px 32px rgba(37, 99, 235, 0.25);
+    }
+
+    /* Título */
+    .splash-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: #f1f5f9;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .splash-title span {
+      color: #3b82f6;
+    }
+
+    /* Subtítulo */
+    .splash-subtitle {
+      font-size: 12px;
+      color: #94a3b8;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 36px;
+    }
+
+    /* Barra de Progresso */
+    .progress-wrapper {
+      width: 320px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #3b82f6, #60a5fa, #3b82f6);
+      background-size: 200% 100%;
+      animation: progressBar 3.5s ease-in-out forwards, shimmer 1.5s linear infinite;
+    }
+
+    /* Status de carregamento */
+    .splash-status {
+      font-size: 11px;
+      color: #64748b;
+      letter-spacing: 0.5px;
+      min-height: 16px;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .splash-status .dots {
+      display: inline-flex;
+      gap: 3px;
+      margin-left: 2px;
+    }
+
+    .splash-status .dots span {
+      width: 4px;
+      height: 4px;
+      background: #64748b;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .splash-status .dots span:nth-child(1) { animation: dotPulse 1.4s 0s infinite; }
+    .splash-status .dots span:nth-child(2) { animation: dotPulse 1.4s 0.2s infinite; }
+    .splash-status .dots span:nth-child(3) { animation: dotPulse 1.4s 0.4s infinite; }
+
+    /* Versão e Copyright */
+    .splash-footer {
+      position: fixed;
+      bottom: 18px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 10px;
+      color: #475569;
+      letter-spacing: 0.5px;
+    }
+
+    .splash-footer .version {
+      color: #64748b;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="splash-container">
+    <div class="splash-logo">
+      <img src="img/logo_avalia_quadrado.png" alt="Avalia+">
+    </div>
+    <div class="splash-title">Avalia<span>+</span> Desktop</div>
+    <div class="splash-subtitle">Sistema de Gestão de Processos Seletivos</div>
+    <div class="progress-wrapper">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="splash-status">
+      <span id="statusText">Inicializando</span>
+      <span class="dots"><span></span><span></span><span></span></span>
+    </div>
+  </div>
+  <div class="splash-footer">
+    <span class="version">v1.2.1</span> &mdash; &copy; 2025-2026 Avalia+Tec
+  </div>
+
+  <script>
+    const messages = [
+      'Inicializando módulos',
+      'Conectando ao banco de dados',
+      'Carregando serviços',
+      'Preparando interface',
+      'Quase pronto'
+    ];
+    const statusEl = document.getElementById('statusText');
+    let idx = 0;
+
+    // Cicla as mensagens de status
+    const interval = setInterval(() => {
+      idx++;
+      if (idx < messages.length) {
+        statusEl.textContent = messages[idx];
+      }
+    }, 700);
+
+    // Ouve o sinal do main process para fechar
+    if (window.electronAPI && window.electronAPI.onSplashReady) {
+      window.electronAPI.onSplashReady(() => {
+        clearInterval(interval);
+        statusEl.textContent = 'Pronto!';
+      });
+    }
+  </script>
+</body>
+</html>
