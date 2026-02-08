@@ -123,11 +123,15 @@ class ReportService {
     const submission = this.db.db.prepare('SELECT * FROM submissions WHERE protocol = ?').get(protocol);
     if (!submission) throw new Error('Inscrição não encontrada');
 
-    // Tenta parsear campos JSON se existirem
+    // Tenta parsear JSON da coluna 'data' (vindo do servidor web via sync)
     let identified = {};
     let project = {};
-    try { identified = submission.identified ? JSON.parse(submission.identified) : {}; } catch { /* noop */ }
-    try { project = submission.project ? JSON.parse(submission.project) : {}; } catch { /* noop */ }
+    let fullData = null;
+    try { fullData = submission.data ? JSON.parse(submission.data) : null; } catch { /* noop */ }
+    if (fullData) {
+      identified = fullData.identified || {};
+      project = fullData.project || fullData.blind || {};
+    }
 
     // Fallback: usa colunas diretas da tabela se o JSON não existir
     if (!identified.nome) {

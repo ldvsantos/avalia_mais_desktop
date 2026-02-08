@@ -112,6 +112,85 @@ async function renderSubmissionDetail(container, protocol) {
     return;
   }
 
+  // Parseia o JSON completo da coluna 'data' (vindo do servidor web via sync)
+  let fullData = null;
+  try { fullData = sub.data ? JSON.parse(sub.data) : null; } catch (_) {}
+  const id = (fullData && fullData.identified) || {};
+  const proj = (fullData && fullData.project) || (fullData && fullData.blind) || {};
+
+  // Helper: busca primeiro no JSON completo, depois nas colunas SQLite
+  const f = (jsonVal, sqliteVal) => {
+    const v = jsonVal || sqliteVal || '';
+    return typeof v === 'string' ? v : String(v);
+  };
+
+  // Monta dados mesclados (JSON tem prioridade, fallback para colunas SQLite)
+  const nome = f(id.nome, sub.nome);
+  const nomeSocial = f(id.nome_social, sub.nome_social);
+  const dataNasc = f(id.data_nascimento, sub.data_nascimento);
+  const cpfDisplay = id.cpf ? id.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.***.***-$4') : (sub.cpf_last4 ? '***' + sub.cpf_last4 : '-');
+  const rg = f(id.rg, sub.rg);
+  const orgaoExp = f(id.orgao_expedidor, sub.orgao_emissor);
+  const dataExp = f(id.data_expedicao, '');
+  const email = f(id.email, sub.email);
+  const celular = f(id.celular, sub.telefone);
+  const telRes = f(id.telefone_residencial, '');
+  const endereco = f(id.endereco, sub.endereco);
+  const cidadeEstado = id.cidade_estado || ((sub.cidade || '') + (sub.estado ? '/' + sub.estado : ''));
+  const cep = f(id.cep, sub.cep);
+  const cursoGrad = f(id.curso_graduacao, sub.curso_graduacao);
+  const instituicao = f(id.instituicao, sub.instituicao);
+  const anoConclusao = f(id.ano_conclusao, sub.ano_conclusao);
+  const racaCor = f(id.raca_cor, '');
+  const linguaEstr = f(id.lingua_estrangeira, '');
+  const vinculo = f(id.vinculo_empregaticio, '');
+  const cargaHoraria = f(id.carga_horaria, '');
+  const empresaVinculo = f(id.empresa_vinculo, '');
+
+  // Vagas/cotas
+  const vagaInst = id.vaga_institucional || sub.vaga_institucional;
+  const vagaCoop = id.vaga_cooperacao || sub.cooperacao_sdr;
+  const vagaReserv = id.vaga_reservada || '';
+  const cotasStr = id.cotas || '';
+  const cotaNegro = (typeof cotasStr === 'string' && cotasStr.includes('negro')) || sub.cota_negro;
+  const cotaIndig = (typeof cotasStr === 'string' && cotasStr.includes('indígena')) || (typeof cotasStr === 'string' && cotasStr.includes('indigena')) || sub.cota_indigena;
+  const cotaQuil = (typeof cotasStr === 'string' && cotasStr.includes('quilombola')) || sub.cota_quilombola;
+  const cotaCig = (typeof cotasStr === 'string' && cotasStr.includes('cigano')) || sub.cota_cigano;
+  const cotaTrans = (typeof cotasStr === 'string' && cotasStr.includes('trans')) || sub.cota_trans;
+  const cotaPcd = (typeof cotasStr === 'string' && cotasStr.includes('pcd')) || sub.cota_pcd;
+
+  // Projeto
+  const tituloPt = f(proj.titulo_pt, sub.titulo_pt);
+  const tituloEn = f(proj.titulo_en, sub.titulo_en);
+  const area = f(proj.area, sub.linha_pesquisa);
+  const palavrasPt = f(proj.palavras_pt, sub.palavras_chave);
+  const palavrasEn = f(proj.palavras_en, '');
+
+  // Anteprojeto
+  const resumo = f(proj.resumo, sub.resumo);
+  const justEnq = f(proj.justificativa_enquadramento, '');
+  const intro = f(proj.introducao, sub.introducao);
+  const problPesq = f(proj.problema_pesquisa, sub.problema);
+  const justRelev = f(proj.justificativa_relevancia, sub.justificativa);
+  const objGeral = f(proj.objetivo_geral, '');
+  const objEspec = f(proj.objetivos_especificos, sub.objetivos);
+  const revisao = f(proj.revisao_literatura, sub.revisao_literatura);
+  const metodo = f(proj.procedimentos_metodologicos, sub.metodologia);
+  const cronograma = f(proj.cronograma, sub.cronograma);
+  const referencias = f(proj.referencias, sub.referencias);
+
+  // Helper para gerar campo somente se tiver valor
+  const field = (label, value) => {
+    const v = (value || '').trim();
+    if (!v || v === '-') return '';
+    return `<div><div class="detail-label">${label}</div><div class="detail-value">${escapeHtml(v)}</div></div>`;
+  };
+  const fieldFull = (label, value) => {
+    const v = (value || '').trim();
+    if (!v || v === '-') return '';
+    return `<div class="full"><div class="detail-label">${label}</div><div class="detail-value" style="white-space:pre-wrap;">${escapeHtml(v)}</div></div>`;
+  };
+
   container.innerHTML = `
     <div class="page-header">
       <div>
@@ -133,54 +212,71 @@ async function renderSubmissionDetail(container, protocol) {
     <div class="card" style="margin-bottom:20px;">
       <div class="card-header"><div class="card-title">Dados Pessoais</div></div>
       <div class="submission-detail">
-        <div><div class="detail-label">Nome</div><div class="detail-value">${escapeHtml(sub.nome)}</div></div>
-        <div><div class="detail-label">Nome Social</div><div class="detail-value">${escapeHtml(sub.nome_social || '-')}</div></div>
-        <div><div class="detail-label">E-mail</div><div class="detail-value">${escapeHtml(sub.email || '-')}</div></div>
-        <div><div class="detail-label">Telefone</div><div class="detail-value">${escapeHtml(sub.telefone || '-')}</div></div>
-        <div><div class="detail-label">Cidade/UF</div><div class="detail-value">${escapeHtml((sub.cidade || '') + '/' + (sub.estado || ''))}</div></div>
-        <div><div class="detail-label">CPF (últimos 4)</div><div class="detail-value">***${escapeHtml(sub.cpf_last4 || '')}</div></div>
-        <div><div class="detail-label">Curso de Graduação</div><div class="detail-value">${escapeHtml(sub.curso_graduacao || '-')}</div></div>
-        <div><div class="detail-label">Instituição</div><div class="detail-value">${escapeHtml(sub.instituicao || '-')}</div></div>
+        ${field('Nome', nome)}
+        ${field('Nome Social', nomeSocial)}
+        ${field('Data de Nascimento', dataNasc)}
+        ${field('CPF', cpfDisplay)}
+        ${field('RG', rg)}
+        ${field('Órgão Expedidor', orgaoExp)}
+        ${field('Data de Expedição', dataExp)}
+        ${field('E-mail', email)}
+        ${field('Celular', celular)}
+        ${field('Telefone Residencial', telRes)}
+        ${field('Endereço', endereco)}
+        ${field('Cidade/UF', cidadeEstado)}
+        ${field('CEP', cep)}
+        ${field('Curso de Graduação', cursoGrad)}
+        ${field('Instituição', instituicao)}
+        ${field('Ano de Conclusão', anoConclusao)}
+        ${field('Raça/Cor', racaCor)}
+        ${field('Língua Estrangeira', linguaEstr)}
+        ${field('Vínculo Empregatício', vinculo)}
+        ${field('Carga Horária', cargaHoraria)}
+        ${field('Empresa', empresaVinculo)}
       </div>
     </div>
 
     <div class="card" style="margin-bottom:20px;">
-      <div class="card-header"><div class="card-title">Projeto</div></div>
+      <div class="card-header"><div class="card-title">Projeto de Pesquisa</div></div>
       <div class="submission-detail">
-        <div class="full"><div class="detail-label">Título (PT)</div><div class="detail-value">${escapeHtml(sub.titulo_pt || '-')}</div></div>
-        <div class="full"><div class="detail-label">Título (EN)</div><div class="detail-value">${escapeHtml(sub.titulo_en || '-')}</div></div>
-        <div><div class="detail-label">Linha de Pesquisa</div><div class="detail-value">${escapeHtml(sub.linha_pesquisa || '-')}</div></div>
-        <div><div class="detail-label">Palavras-chave</div><div class="detail-value">${escapeHtml(sub.palavras_chave || '-')}</div></div>
+        <div class="full"><div class="detail-label">Título (PT)</div><div class="detail-value">${escapeHtml(tituloPt || '-')}</div></div>
+        <div class="full"><div class="detail-label">Título (EN)</div><div class="detail-value">${escapeHtml(tituloEn || '-')}</div></div>
+        ${field('Linha de Pesquisa / Área', area)}
+        ${field('Palavras-chave (PT)', palavrasPt)}
+        ${field('Palavras-chave (EN)', palavrasEn)}
       </div>
     </div>
 
     <div class="card" style="margin-bottom:20px;">
       <div class="card-header"><div class="card-title">Anteprojeto</div></div>
       <div class="submission-detail">
-        <div class="full"><div class="detail-label">Resumo</div><div class="detail-value" style="white-space:pre-wrap;">${escapeHtml(sub.resumo || '-')}</div></div>
-        <div class="full"><div class="detail-label">Justificativa</div><div class="detail-value" style="white-space:pre-wrap;">${escapeHtml(sub.justificativa || '-')}</div></div>
-        <div class="full"><div class="detail-label">Introdução</div><div class="detail-value" style="white-space:pre-wrap;">${escapeHtml(sub.introducao || '-')}</div></div>
-        <div class="full"><div class="detail-label">Problema</div><div class="detail-value" style="white-space:pre-wrap;">${escapeHtml(sub.problema || '-')}</div></div>
-        <div class="full"><div class="detail-label">Objetivos</div><div class="detail-value" style="white-space:pre-wrap;">${escapeHtml(sub.objetivos || '-')}</div></div>
-        <div class="full"><div class="detail-label">Revisão da Literatura</div><div class="detail-value" style="white-space:pre-wrap;">${escapeHtml(sub.revisao_literatura || '-')}</div></div>
-        <div class="full"><div class="detail-label">Metodologia</div><div class="detail-value" style="white-space:pre-wrap;">${escapeHtml(sub.metodologia || '-')}</div></div>
-        <div class="full"><div class="detail-label">Cronograma</div><div class="detail-value" style="white-space:pre-wrap;">${escapeHtml(sub.cronograma || '-')}</div></div>
-        <div class="full"><div class="detail-label">Referências</div><div class="detail-value" style="white-space:pre-wrap;">${escapeHtml(sub.referencias || '-')}</div></div>
+        ${fieldFull('Resumo', resumo)}
+        ${fieldFull('Justificativa de Enquadramento', justEnq)}
+        ${fieldFull('Introdução / Contextualização', intro)}
+        ${fieldFull('Problema de Pesquisa', problPesq)}
+        ${fieldFull('Justificativa / Relevância', justRelev)}
+        ${fieldFull('Objetivo Geral', objGeral)}
+        ${fieldFull('Objetivos Específicos', objEspec)}
+        ${fieldFull('Revisão da Literatura', revisao)}
+        ${fieldFull('Procedimentos Metodológicos', metodo)}
+        ${fieldFull('Cronograma', cronograma)}
+        ${fieldFull('Referências', referencias)}
       </div>
     </div>
 
     <div class="card">
       <div class="card-header"><div class="card-title">Vagas Especiais</div></div>
       <div style="display:flex; gap:12px; flex-wrap:wrap;">
-        ${sub.vaga_institucional ? '<span class="badge badge-info">Institucional</span>' : ''}
-        ${sub.cooperacao_sdr ? '<span class="badge badge-info">Cooperação SDR</span>' : ''}
-        ${sub.cota_negro ? '<span class="badge badge-warning">Cota Negro</span>' : ''}
-        ${sub.cota_indigena ? '<span class="badge badge-warning">Cota Indígena</span>' : ''}
-        ${sub.cota_quilombola ? '<span class="badge badge-warning">Cota Quilombola</span>' : ''}
-        ${sub.cota_cigano ? '<span class="badge badge-warning">Cota Cigano</span>' : ''}
-        ${sub.cota_trans ? '<span class="badge badge-warning">Cota PessoaTrans</span>' : ''}
-        ${sub.cota_pcd ? '<span class="badge badge-warning">Cota PcD</span>' : ''}
-        ${!sub.vaga_institucional && !sub.cooperacao_sdr && !sub.cota_negro && !sub.cota_indigena && !sub.cota_quilombola && !sub.cota_cigano && !sub.cota_trans && !sub.cota_pcd ? '<span style="color:var(--text-muted)">Ampla Concorrência</span>' : ''}
+        ${vagaInst ? '<span class="badge badge-info">Institucional</span>' : ''}
+        ${vagaCoop ? '<span class="badge badge-info">Cooperação SDR</span>' : ''}
+        ${vagaReserv ? '<span class="badge badge-info">Vaga Reservada</span>' : ''}
+        ${cotaNegro ? '<span class="badge badge-warning">Cota Negro</span>' : ''}
+        ${cotaIndig ? '<span class="badge badge-warning">Cota Indígena</span>' : ''}
+        ${cotaQuil ? '<span class="badge badge-warning">Cota Quilombola</span>' : ''}
+        ${cotaCig ? '<span class="badge badge-warning">Cota Cigano</span>' : ''}
+        ${cotaTrans ? '<span class="badge badge-warning">Cota PessoaTrans</span>' : ''}
+        ${cotaPcd ? '<span class="badge badge-warning">Cota PcD</span>' : ''}
+        ${!vagaInst && !vagaCoop && !vagaReserv && !cotaNegro && !cotaIndig && !cotaQuil && !cotaCig && !cotaTrans && !cotaPcd ? '<span style="color:var(--text-muted)">Ampla Concorrência</span>' : ''}
       </div>
     </div>
   `;

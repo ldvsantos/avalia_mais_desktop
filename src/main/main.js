@@ -142,7 +142,7 @@ function showAbout() {
   dialog.showMessageBox(mainWindow, {
     type: 'info',
     title: 'Sobre o Avalia+ Desktop',
-    message: 'Avalia+ Desktop v1.2.0',
+    message: 'Avalia+ Desktop v1.2.1',
     detail: 'Sistema de Gestão de Processos Seletivos\n\n© 2025-2026 Avalia+Tec\nTodos os direitos reservados.',
     buttons: ['OK']
   });
