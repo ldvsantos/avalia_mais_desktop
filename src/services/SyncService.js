@@ -20,7 +20,7 @@ class SyncService {
   static DEFAULTS = {
     serverUrl: 'https://avaliamais.tec.br',
     adminSecret: '4a98a736-811d-447a-bfb3-6f4c2bc0dbc7',
-    adminUser: 'diego',
+    adminUser: 'admin',
     adminPass: 'u9u-WNJ1w5Nw7pTQ_GGQkLLu-qdN0X8JF4Xz9HPIyfo',
     intervalMinutes: 5
   };
