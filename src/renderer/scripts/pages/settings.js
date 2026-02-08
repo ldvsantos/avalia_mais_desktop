@@ -104,11 +104,11 @@ Router.register('settings', async (container) => {
         <h4>Calendário do Processo</h4>
         <p style="font-size:12px; color:var(--text-muted);">Gerencie datas de cada etapa</p>
       </div>
-      <div class="card" style="cursor:pointer; text-align:center;" onclick="Router.navigate('sync')">
+      <div class="card" style="cursor:pointer; text-align:center;" id="sync-card-btn">
         <div style="font-size:32px; margin-bottom:8px;">🔄</div>
-        <h4>Sincronização</h4>
+        <h4>Sincronizar Agora</h4>
         <p style="font-size:12px; color:var(--text-muted);">
-          ${syncStatus?.lastSync ? 'Última sync: ' + new Date(syncStatus.lastSync).toLocaleString('pt-BR') : 'Configurar conexão com servidor web'}
+          ${syncStatus?.lastSync ? 'Última sync: ' + new Date(syncStatus.lastSync).toLocaleString('pt-BR') : 'Clique para sincronizar com o servidor'}
         </p>
       </div>
       <div class="card" style="cursor:pointer; text-align:center;" onclick="Router.navigate('backup')">
@@ -134,4 +134,32 @@ Router.register('settings', async (container) => {
     await avaliaAPI.settings.update(data);
     Toast.show('success', 'Configurações salvas com sucesso!');
   });
+
+  // Botão de sincronização manual
+  const syncBtn = document.getElementById('sync-card-btn');
+  if (syncBtn) {
+    syncBtn.addEventListener('click', async () => {
+      syncBtn.style.opacity = '0.6';
+      syncBtn.querySelector('h4').textContent = 'Sincronizando...';
+      Toast.show('info', 'Sincronizando com o servidor...', 3000);
+      try {
+        const result = await avaliaAPI.sync.autoLoginAndPull();
+        if (result && result.success) {
+          const r = result.results || {};
+          const total = (r.submissions || 0) + (r.evaluations || 0) + (r.appeals || 0) +
+            (r.events || 0) + (r.calendar || 0) + (r.faq || 0) + (r.files || 0) +
+            (r.evaluators || 0) + (r.phaseStatus || 0);
+          Toast.show('success', `Sincronizado — ${total} registros atualizados`, 4000);
+          syncBtn.querySelector('p').textContent = 'Última sync: ' + new Date().toLocaleString('pt-BR');
+        } else {
+          Toast.show('error', 'Falha na sincronização: ' + (result?.error || 'sem conexão'), 5000);
+        }
+      } catch (err) {
+        Toast.show('error', 'Erro: ' + err.message, 5000);
+      } finally {
+        syncBtn.style.opacity = '1';
+        syncBtn.querySelector('h4').textContent = 'Sincronizar Agora';
+      }
+    });
+  }
 });

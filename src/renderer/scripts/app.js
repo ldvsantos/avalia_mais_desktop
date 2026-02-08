@@ -94,7 +94,7 @@ const App = {
   async runAutoSync() {
     try {
       console.log('[App] Iniciando sincronização automática...');
-      Toast.show('info', 'Sincronizando com o servidor...', 3000);
+      Toast.show('info', 'Sincronizando com o servidor...', 5000);
       const result = await avaliaAPI.sync.autoLoginAndPull();
       if (result && result.success) {
         const r = result.results || {};
@@ -106,8 +106,18 @@ const App = {
         // Atualiza a página atual para refletir os dados novos
         if (Router && Router.currentPage) Router.navigate(Router.currentPage);
       } else {
-        console.warn('[App] Sync falhou:', result?.error);
-        Toast.show('warning', 'Sincronização falhou: ' + (result?.error || 'sem conexão'), 5000);
+        const errMsg = result?.error || 'sem conexão';
+        console.warn('[App] Sync falhou:', errMsg);
+        // Mensagem amigável para o usuário
+        if (errMsg.includes('ENOTFOUND') || errMsg.includes('DNS')) {
+          Toast.show('warning', 'Sem internet — trabalhando offline', 5000);
+        } else if (errMsg.includes('ECONNREFUSED') || errMsg.includes('indisponível')) {
+          Toast.show('warning', 'Servidor indisponível — trabalhando offline', 5000);
+        } else if (errMsg.includes('Timeout') || errMsg.includes('ETIMEDOUT')) {
+          Toast.show('warning', 'Servidor lento — trabalhando offline', 5000);
+        } else {
+          Toast.show('warning', 'Sincronização falhou: ' + errMsg, 5000);
+        }
       }
     } catch (err) {
       console.error('[App] Sync error:', err);

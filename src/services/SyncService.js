@@ -18,7 +18,7 @@ class SyncService {
   // Estas constantes são usadas quando não há config salva no banco.
   // Produção = https://avaliamais.tec.br  |  Local = http://localhost:3000
   static DEFAULTS = {
-    serverUrl: 'http://localhost:3000',
+    serverUrl: 'https://avaliamais.tec.br',
     adminSecret: '4a98a736-811d-447a-bfb3-6f4c2bc0dbc7',
     adminUser: 'diego',
     adminPass: 'u9u-WNJ1w5Nw7pTQ_GGQkLLu-qdN0X8JF4Xz9HPIyfo',
@@ -40,51 +40,69 @@ class SyncService {
 
   /**
    * Configura automaticamente a sincronização com os valores padrão.
-   * Chamado apenas uma vez no primeiro boot. Se já existir config, não sobrescreve.
+   * Chamado apenas uma vez no primeiro boot. Se já existir config, não sobrescreve
+   * (exceto se o valor antigo é localhost — migra para produção).
    */
   autoSetup() {
-    // Sempre sincroniza config com os DEFAULTS (garante URL e secret atualizados)
-    this.db.updateSettings({
-      'sync.server_url': SyncService.DEFAULTS.serverUrl,
-      'sync.admin_secret': SyncService.DEFAULTS.adminSecret,
-      'sync.auto_sync': '1',
-      'sync.interval_minutes': String(SyncService.DEFAULTS.intervalMinutes),
-      'sync.enabled': '1'
-    });
-    this._addLog('info', 'Sync configurado para ' + SyncService.DEFAULTS.serverUrl);
+    const settings = this.db.getSettings();
+    const currentUrl = settings['sync.server_url'] || '';
+
+    // Migra automaticamente de localhost para produção
+    const isLocalhost = !currentUrl || currentUrl.includes('localhost') || currentUrl.includes('127.0.0.1');
+
+    const updates = {};
+    if (isLocalhost) updates['sync.server_url'] = SyncService.DEFAULTS.serverUrl;
+    if (!settings['sync.admin_secret']) updates['sync.admin_secret'] = SyncService.DEFAULTS.adminSecret;
+    if (!settings['sync.auto_sync']) updates['sync.auto_sync'] = '1';
+    if (!settings['sync.interval_minutes']) updates['sync.interval_minutes'] = String(SyncService.DEFAULTS.intervalMinutes);
+    if (!settings['sync.enabled']) updates['sync.enabled'] = '1';
+
+    if (Object.keys(updates).length > 0) {
+      this.db.updateSettings(updates);
+    }
+    this._addLog('info', 'Sync configurado para ' + (updates['sync.server_url'] || currentUrl || SyncService.DEFAULTS.serverUrl));
   }
 
   /**
    * Autentica automaticamente com credenciais padrão e faz o primeiro pull.
    * Chamado após o login do usuário no desktop.
+   * Tenta até 2 vezes em caso de falha de rede.
    */
   async autoLoginAndPull() {
-    try {
-      const config = this.getConfig();
+    const maxRetries = 2;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const config = this.getConfig();
 
-      // 1. Se já tem token, tenta pull direto
-      if (config.authToken) {
-        this._addLog('info', 'Token existente — tentando pull...');
-        try {
-          const result = await this.pullAll();
-          if (result.success) return result;
-        } catch (_) { /* ignora */ }
-        // Token inválido/expirado — limpa e re-autentica
-        this._addLog('info', 'Token expirado — limpando e re-autenticando...');
-        this.db.updateSettings({ 'sync.auth_token': '' });
+        // 1. Se já tem token, tenta pull direto
+        if (config.authToken) {
+          this._addLog('info', `Token existente — tentando pull... (tentativa ${attempt}/${maxRetries})`);
+          try {
+            const result = await this.pullAll();
+            if (result.success) return result;
+          } catch (_) { /* ignora */ }
+          // Token inválido/expirado — limpa e re-autentica
+          this._addLog('info', 'Token expirado — limpando e re-autenticando...');
+          this.db.updateSettings({ 'sync.auth_token': '' });
+        }
+
+        // 2. Autentica com credenciais padrão
+        await this.authenticate(
+          SyncService.DEFAULTS.adminUser,
+          SyncService.DEFAULTS.adminPass
+        );
+
+        // 3. Pull completo com o novo token
+        return await this.pullAll();
+      } catch (err) {
+        this._addLog('err', `Auto-sync tentativa ${attempt}/${maxRetries} falhou: ${err.message}`);
+        if (attempt < maxRetries) {
+          // Espera 3 segundos antes de tentar novamente
+          await new Promise(r => setTimeout(r, 3000));
+        } else {
+          return { success: false, error: err.message };
+        }
       }
-
-      // 2. Autentica com credenciais padrão
-      await this.authenticate(
-        SyncService.DEFAULTS.adminUser,
-        SyncService.DEFAULTS.adminPass
-      );
-
-      // 3. Pull completo com o novo token
-      return await this.pullAll();
-    } catch (err) {
-      this._addLog('err', 'Auto-sync falhou: ' + err.message);
-      return { success: false, error: err.message };
     }
   }
 
@@ -155,8 +173,15 @@ class SyncService {
         });
       });
 
-      req.on('error', (e) => reject(new Error(`Conexão falhou: ${e.message}`)));
-      req.on('timeout', () => { req.destroy(); reject(new Error('Timeout — servidor demorou para responder')); });
+      req.on('error', (e) => {
+        let msg = `Conexão falhou: ${e.message}`;
+        if (e.code === 'ECONNREFUSED') msg = `Servidor indisponível (${url.hostname}:${url.port}) — verifique se o servidor está online`;
+        else if (e.code === 'ENOTFOUND') msg = `DNS não resolvido — verifique sua conexão com a internet`;
+        else if (e.code === 'CERT_HAS_EXPIRED' || e.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' || e.code === 'DEPTH_ZERO_SELF_SIGNED_CERT') msg = `Certificado SSL inválido — tentando ignorar...`;
+        else if (e.code === 'ETIMEDOUT' || e.code === 'ECONNRESET') msg = `Conexão perdida — verifique sua rede`;
+        reject(new Error(msg));
+      });
+      req.on('timeout', () => { req.destroy(); reject(new Error('Timeout — servidor demorou para responder (60s)')); });
 
       if (body) req.write(JSON.stringify(body));
       req.end();
